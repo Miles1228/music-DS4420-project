@@ -18,3 +18,6 @@ Example variables include:
 
 These features are used as predictors for machine learning models.
 
+## Authors
+-Siyuan Chen 
+-Yifan Wang
