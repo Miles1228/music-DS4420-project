@@ -1,0 +1,111 @@
+---
+title: "DS4420 Final Project"
+author: "Yifan Wang, Siyuan Chen"
+date: "2026-04-14"
+output: html_document
+---
+
+## Bayesian Regression for Spotify Popularity
+```{r setup, warning=FALSE, message=FALSE}
+
+# Load packages
+library(rstanarm)
+library(bayesplot)
+library(ggplot2)
+
+# Read data
+data <- read.csv("dataset.csv")
+
+# Keep only the variables needed for the Bayesian model
+df <- data[, c("popularity", "danceability", "energy", "tempo", "loudness", "valence")]
+
+# Remove missing values
+df <- na.omit(df)
+
+# Standardize predictors
+predictor_cols <- c("danceability", "energy", "tempo", "loudness", "valence")
+df[predictor_cols] <- scale(df[predictor_cols])
+
+# Fit Bayesian regression model
+bayes_model <- stan_glm(
+  popularity ~ danceability + energy + tempo + loudness + valence,
+  data = df,
+  family = gaussian(),
+  chains = 4,
+  iter = 2000,
+  seed = 123,
+  refresh = 0
+)
+
+# Model summary
+summary(bayes_model)
+
+# 95% credible intervals
+ci <- posterior_interval(bayes_model, prob = 0.95)
+print(ci)
+
+# Coefficients (posterior means)
+coef_values <- coef(bayes_model)
+print(coef_values)
+
+
+# Plot 1: Coefficient intervals
+mcmc_intervals(
+  as.matrix(bayes_model),
+  pars = c("(Intercept)", "danceability", "energy", "tempo", "loudness", "valence")
+)
+
+
+# Plot 2: Feature importance using absolute coefficient values
+coef_df <- data.frame(
+  feature = names(coef_values)[-1],
+  value = abs(coef_values[-1])
+)
+
+ggplot(coef_df, aes(x = reorder(feature, value), y = value)) +
+  geom_col() +
+  coord_flip() +
+  labs(
+    title = "Feature Importance Based on Absolute Coefficients",
+    x = "Feature",
+    y = "Absolute Coefficient Value"
+  ) +
+  theme_minimal()
+
+
+# Save plots
+# Coefficient interval plot
+png("bayesian_coefficient_intervals.png", width = 900, height = 600)
+mcmc_intervals(
+  as.matrix(bayes_model),
+  pars = c("(Intercept)", "danceability", "energy", "tempo", "loudness", "valence")
+)
+dev.off()
+
+# Feature importance plot
+p <- ggplot(coef_df, aes(x = reorder(feature, value), y = value)) +
+  geom_col() +
+  coord_flip() +
+  labs(
+    title = "Feature Importance Based on Absolute Coefficients",
+    x = "Feature",
+    y = "Absolute Coefficient Value"
+  ) +
+  theme_minimal()
+
+ggsave("bayesian_feature_importance.png", plot = p, width = 9, height = 6)
+```
+
+## Bayesian Interpretation
+From the model results, we can see that different audio features have different effects on song popularity.
+
+Loudness and danceability have positive effects, which means songs that are louder and more danceable tend to be more popular. On the other hand, energy and valence show negative relationships with popularity, suggesting that higher values in these features do not always lead to higher popularity. Tempo has a positive effect, but its impact is relatively small compared to the other features.
+
+The 95% credible intervals for all variables do not include zero, which suggests that these features have meaningful effects on popularity. Overall, loudness appears to be the most important feature based on its larger coefficient value.
+
+## Bayesian Model Section
+We used a Bayesian regression model in R to predict Spotify track popularity based on several audio features, including danceability, energy, tempo, loudness, and valence.
+
+One advantage of using a Bayesian approach is that it not only gives us coefficient estimates, but also shows the uncertainty of each estimate through credible intervals. This makes it easier to understand how each feature affects popularity.
+
+Before training the model, we standardized all input features so that they are on the same scale and easier to compare.
