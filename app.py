@@ -67,46 +67,23 @@ class ManualMLP:
         return self._forward(X).flatten()
 
 
-# ── Load data and train model (cached — only runs once) ──────────────────────
+# ── Load pre-trained weights (instant startup, no training needed) ────────────
 @st.cache_resource
 def load_and_train():
-    data     = pd.read_csv("dataset (1).csv")
-    features = ["danceability", "energy", "tempo", "loudness", "valence"]
+    ck = np.load("model_weights.npz")
 
-    data_clean = data[features + ["popularity"]].dropna()
+    model = ManualMLP(layer_sizes=[5, 64, 32, 1])
+    model.weights = [ck["w0"], ck["w1"], ck["w2"]]
+    model.biases  = [ck["b0"], ck["b1"], ck["b2"]]
 
-    # Use 20k sample to keep startup fast on Streamlit Cloud
-    data_clean = data_clean.sample(n=20000, random_state=42)
+    X_mean = ck["X_mean"]
+    X_std  = ck["X_std"]
+    y_all  = ck["y_all"]
+    y_test = ck["y_test"]
+    y_pred = ck["y_pred"]
+    rmse, mae, r2 = ck["metrics"]
 
-    X = data_clean[features].values
-    y = data_clean["popularity"].values
-
-    np.random.seed(42)
-    idx   = np.random.permutation(len(X))
-    split = int(len(X) * 0.8)
-    train_idx, test_idx = idx[:split], idx[split:]
-
-    X_train, X_test = X[train_idx], X[test_idx]
-    y_train, y_test = y[train_idx], y[test_idx]
-
-    X_mean = X_train.mean(axis=0)
-    X_std  = X_train.std(axis=0)
-    X_train_sc = (X_train - X_mean) / X_std
-    X_test_sc  = (X_test  - X_mean) / X_std
-
-    model = ManualMLP(layer_sizes=[5, 64, 32, 1], learning_rate=0.001,
-                      max_iter=200, batch_size=256, random_state=42)
-    model.fit(X_train_sc, y_train)
-
-    y_pred = model.predict(X_test_sc)
-
-    rmse   = float(np.sqrt(np.mean((y_test - y_pred) ** 2)))
-    mae    = float(np.mean(np.abs(y_test - y_pred)))
-    ss_res = np.sum((y_test - y_pred) ** 2)
-    ss_tot = np.sum((y_test - y_test.mean()) ** 2)
-    r2     = float(1 - ss_res / ss_tot)
-
-    return model, X_mean, X_std, y, y_test, y_pred, rmse, mae, r2
+    return model, X_mean, X_std, y_all, y_test, y_pred, float(rmse), float(mae), float(r2)
 
 
 # ── App config ────────────────────────────────────────────────────────────────
