@@ -48,10 +48,7 @@ Both models suggest that audio features alone are insufficient to fully explain 
 
 ---
 
-## Repository Structure
 
-
----
 
 ## Authors
 - Siyuan Chen  
