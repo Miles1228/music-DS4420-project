@@ -74,6 +74,10 @@ def load_and_train():
     features = ["danceability", "energy", "tempo", "loudness", "valence"]
 
     data_clean = data[features + ["popularity"]].dropna()
+
+    # Use 20k sample to keep startup fast on Streamlit Cloud
+    data_clean = data_clean.sample(n=20000, random_state=42)
+
     X = data_clean[features].values
     y = data_clean["popularity"].values
 
@@ -91,7 +95,7 @@ def load_and_train():
     X_test_sc  = (X_test  - X_mean) / X_std
 
     model = ManualMLP(layer_sizes=[5, 64, 32, 1], learning_rate=0.001,
-                      max_iter=500, batch_size=256, random_state=42)
+                      max_iter=200, batch_size=256, random_state=42)
     model.fit(X_train_sc, y_train)
 
     y_pred = model.predict(X_test_sc)
